@@ -1,0 +1,201 @@
+/* PWA Specific Styles */
+
+/* PWA Update Banner */
+.pwa-update-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+    z-index: 1000;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: slideDown 0.3s ease-out;
+}
+
+.update-message {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 16px;
+}
+
+.update-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.update-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Offline Banner */
+.offline-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+    text-align: center;
+    padding: 10px;
+    font-weight: 500;
+    z-index: 999;
+    animation: slideDown 0.3s ease-out;
+}
+
+/* Install Button */
+.install-btn {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.install-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.install-btn:active {
+    transform: translateY(0);
+}
+
+/* PWA Install Prompt Component */
+.pwa-install-button {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.pwa-install-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.4);
+}
+
+/* Responsive PWA adjustments */
+@media (max-width: 768px) {
+    .update-message {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .update-btn {
+        width: 100%;
+        max-width: 200px;
+    }
+
+    .install-btn {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
+    .offline-banner {
+        padding: 8px;
+        font-size: 14px;
+    }
+}
+
+/* PWA-specific animations */
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* PWA status indicators in footer */
+.system-info span {
+    font-size: 12px;
+    color: #666;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.system-info span:last-child {
+    background: #4caf50;
+    color: white;
+}
+
+/* Standalone mode adjustments */
+@media (display-mode: standalone) {
+    .app-header {
+        padding-top: env(safe-area-inset-top, 20px);
+    }
+
+    .toeic-app {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
+    }
+}
+
+/* iOS Safari standalone mode */
+@media (display-mode: standalone) and (-webkit-touch-callout: none) {
+    .app-header {
+        padding-top: max(env(safe-area-inset-top), 20px);
+    }
+}
+
+/* High contrast mode support for PWA */
+@media (prefers-contrast: high) {
+    .install-btn,
+    .update-btn {
+        border: 2px solid currentColor;
+    }
+
+    .pwa-update-banner {
+        border-bottom: 2px solid #333;
+    }
+
+    .offline-banner {
+        border-bottom: 2px solid #333;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .pwa-update-banner,
+    .offline-banner {
+        animation: none;
+    }
+
+    .install-btn:hover,
+    .update-btn:hover,
+    .pwa-install-button:hover {
+        transform: none;
+    }
+}

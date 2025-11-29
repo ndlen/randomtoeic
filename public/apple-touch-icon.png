@@ -1,0 +1,11 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="180" height="180" rx="18" fill="#1976D2"/>
+<path d="M45 67.5C45 59.4919 51.4919 53 59.5 53H120.5C128.508 53 135 59.4919 135 67.5V112.5C135 120.508 128.508 127 120.5 127H59.5C51.4919 127 45 120.508 45 112.5V67.5Z" fill="white"/>
+<path d="M59.5 71.25H82.75V75H59.5V71.25Z" fill="#1976D2"/>
+<path d="M59.5 82.5H120.5V86.25H59.5V82.5Z" fill="#1976D2"/>
+<path d="M59.5 93.75H120.5V97.5H59.5V93.75Z" fill="#1976D2"/>
+<path d="M59.5 105H101.25V108.75H59.5V105Z" fill="#1976D2"/>
+<circle cx="112.5" cy="106.875" r="5.625" fill="#4CAF50"/>
+<text x="90" y="146" font-family="Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="white">TOEIC</text>
+<text x="90" y="161" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="white">Random</text>
+</svg>
