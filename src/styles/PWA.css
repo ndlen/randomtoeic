@@ -112,12 +112,19 @@
     }
 
     .install-btn {
-        font-size: 12px;
-        padding: 8px 12px;
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: 6px;
+    }
+
+    .pwa-install-button {
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: 6px;
     }
 
     .offline-banner {
-        padding: 8px;
+        padding: 6px;
         font-size: 14px;
     }
 }
@@ -152,7 +159,8 @@
 /* Standalone mode adjustments */
 @media (display-mode: standalone) {
     .app-header {
-        padding-top: env(safe-area-inset-top, 20px);
+        padding-top: max(env(safe-area-inset-top), 10px);
+        padding-bottom: 0.75rem;
     }
 
     .toeic-app {
@@ -166,7 +174,7 @@
 /* iOS Safari standalone mode */
 @media (display-mode: standalone) and (-webkit-touch-callout: none) {
     .app-header {
-        padding-top: max(env(safe-area-inset-top), 20px);
+        padding-top: max(env(safe-area-inset-top), 15px);
     }
 }
 
