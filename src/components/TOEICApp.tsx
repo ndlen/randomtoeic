@@ -3,11 +3,7 @@ import DailyExamList from "./DailyExamList";
 import ExamHistory from "./ExamHistory";
 import type { DailyExamStatus, ExamStats } from "../types";
 import { getUserData, getTodayExams } from "../firebaseService";
-import {
-    checkAndResetIfNewDay,
-    generateDailyExams,
-    getVietnamDate,
-} from "../randomService";
+import { generateDailyExams, getVietnamDate } from "../randomService";
 import {
     useServiceWorkerUpdate,
     usePWAInstall,
