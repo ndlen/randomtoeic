@@ -50,18 +50,18 @@ const TOEICApp: React.FC = () => {
         setIsLoading(true);
         try {
             // Kiểm tra và reset nếu là ngày mới
-            const resetResult = await checkAndResetIfNewDay();
+            const resetResult = await checkAndResetIfNewDay("default");
 
             if (resetResult && resetResult.success) {
                 setDailyExams(resetResult.dailyExams);
             } else {
                 // Lấy dữ liệu hiện tại
-                const todayExams = await getTodayExams();
+                const todayExams = await getTodayExams("default");
                 setDailyExams(todayExams);
             }
 
             // Lấy thống kê
-            const userData = await getUserData();
+            const userData = await getUserData("default");
             if (userData) {
                 setExamStats(userData.examStats);
             }
@@ -75,12 +75,12 @@ const TOEICApp: React.FC = () => {
     const handleNewDayReset = async () => {
         setIsGenerating(true);
         try {
-            const result = await generateDailyExams();
+            const result = await generateDailyExams("default");
             if (result.success) {
                 setDailyExams(result.dailyExams);
 
                 // Cập nhật lại stats
-                const userData = await getUserData();
+                const userData = await getUserData("default");
                 if (userData) {
                     setExamStats(userData.examStats);
                 }
