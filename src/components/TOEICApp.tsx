@@ -2,7 +2,11 @@ import React, { useState, useEffect } from "react";
 import DailyExamList from "./DailyExamList";
 import ExamHistory from "./ExamHistory";
 import type { DailyExamStatus, ExamStats } from "../types";
-import { getUserData, getTodayExams } from "../firebaseService";
+import {
+    getUserData,
+    getTodayExams,
+    toggleExamCompleted,
+} from "../firebaseService";
 import { generateDailyExams, getVietnamDate } from "../randomService";
 import {
     useServiceWorkerUpdate,
@@ -28,17 +32,11 @@ const TOEICApp: React.FC = () => {
         initializeApp();
     }, []);
 
-    // Auto-refresh mỗi phút để kiểm tra ngày mới - CHỈ VÀO 0H
+    // Đơn giản: chỉ cập nhật thời gian hiển thị
     useEffect(() => {
-        const interval = setInterval(async () => {
-            const now = new Date();
-            // Kiểm tra xem có phải 0h00 không (chính xác)
-            if (now.getHours() === 0 && now.getMinutes() === 0) {
-                console.log("🌅 0h00 detected - Sinh đề mới cho ngày mới!");
-                await handleNewDayReset();
-            }
-            setLastUpdateTime(now);
-        }, 60000); // Check mỗi phút
+        const interval = setInterval(() => {
+            setLastUpdateTime(new Date());
+        }, 60000); // Cập nhật mỗi phút
 
         return () => clearInterval(interval);
     }, []);
@@ -46,41 +44,22 @@ const TOEICApp: React.FC = () => {
     const initializeApp = async () => {
         setIsLoading(true);
         try {
-            // Lấy dữ liệu user hiện tại
+            // CHỈ lấy dữ liệu có sẵn, không tự động sinh đề
+            console.log("📋 Đang lấy dữ liệu...");
             const userData = await getUserData("default");
 
-            if (
-                !userData ||
-                !userData.dailyExams ||
-                userData.dailyExams.length === 0
-            ) {
-                // Chỉ sinh đề mới nếu chưa có đề hoặc lần đầu chạy
-                console.log("🆕 Không có đề hoặc lần đầu chạy - sinh đề mới");
-                const result = await generateDailyExams("default");
-                if (result.success) {
-                    setDailyExams(result.dailyExams);
-                }
-            } else {
-                // Đã có đề - chỉ kiểm tra ngày mới mà KHÔNG tự động sinh
-                const currentDate = getVietnamDate();
-                if (userData.currentDate !== currentDate) {
-                    console.log("🌅 Phát hiện ngày mới - cần reset (chờ 0h)");
-                    // Chỉ thông báo, KHÔNG tự động sinh đề
-                } else {
-                    console.log("📋 Sử dụng đề hiện tại của hôm nay");
-                }
-
-                // Lấy đề hiện tại
+            if (userData && userData.dailyExams) {
                 const todayExams = await getTodayExams("default");
                 setDailyExams(todayExams);
-            }
-
-            // Lấy thống kê
-            if (userData) {
-                setExamStats(userData.examStats);
+                setExamStats(userData.examStats || []);
+                console.log(`✅ Đã tải ${todayExams.length} đề hiện tại`);
+            } else {
+                console.log("🔄 Chưa có đề - hãy nhấn nút 'Ngày Mới'");
+                setDailyExams([]);
+                setExamStats([]);
             }
         } catch (error) {
-            console.error("Error initializing app:", error);
+            console.error("Error loading app:", error);
         } finally {
             setIsLoading(false);
         }
@@ -107,7 +86,7 @@ const TOEICApp: React.FC = () => {
     };
 
     const handleExamToggle = async (examId: string) => {
-        // Cập nhật state local ngay lập tức
+        // Cập nhật state local ngay lập tức cho UX
         setDailyExams((prev) =>
             prev.map((exam) =>
                 exam.examId === examId
@@ -116,14 +95,30 @@ const TOEICApp: React.FC = () => {
             )
         );
 
-        // Luôn refresh stats từ database sau khi toggle
-        setTimeout(async () => {
-            const userData = await getUserData();
-            if (userData) {
-                setExamStats(userData.examStats);
-                console.log("Updated examStats:", userData.examStats); // Debug log
+        // Cập nhật Firebase và stats
+        try {
+            const success = await toggleExamCompleted(examId, "default");
+            if (success) {
+                console.log("✅ Đã cập nhật Firebase");
+                // Refresh stats từ database
+                const userData = await getUserData("default");
+                if (userData) {
+                    setExamStats(userData.examStats || []);
+                }
+            } else {
+                console.error("❌ Lỗi cập nhật Firebase");
+                // Rollback state nếu lỗi
+                setDailyExams((prev) =>
+                    prev.map((exam) =>
+                        exam.examId === examId
+                            ? { ...exam, isCompleted: !exam.isCompleted }
+                            : exam
+                    )
+                );
             }
-        }, 500); // Delay nhỏ để đảm bảo Firebase đã cập nhật
+        } catch (error) {
+            console.error("❌ Error toggling exam:", error);
+        }
     };
 
     const formatTime = (date: Date) => {
@@ -169,19 +164,24 @@ const TOEICApp: React.FC = () => {
                 </div>
 
                 <div className="header-actions">
-                    {/* Test button - xóa khi deploy thật */}
+                    {/* Button sinh đề mới manual */}
                     <button
-                        className="test-btn"
+                        className="new-exam-btn"
                         onClick={handleNewDayReset}
                         disabled={isGenerating}
-                        title="Test sinh đề mới"
+                        title="Sinh đề mới cho hôm nay"
                         style={{
-                            backgroundColor: "#ff6b6b",
+                            backgroundColor: "#4CAF50",
                             color: "white",
-                            fontSize: "0.8em",
+                            fontSize: "0.9em",
+                            fontWeight: "bold",
+                            padding: "8px 16px",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: isGenerating ? "not-allowed" : "pointer",
                         }}
                     >
-                        📝 Test Đề Mới
+                        {isGenerating ? "⏳ Đang tạo..." : "🌅 Ngày Mới"}
                     </button>
 
                     {isInstallable && (
@@ -239,9 +239,8 @@ const TOEICApp: React.FC = () => {
                 <div className="footer-content">
                     <div className="tips">
                         💡 <strong>Tips:</strong>
-                        Hệ thống chỉ tự động sinh đề mới vào đúng 0h00 hàng ngày
-                        (giờ Việt Nam). F5/refresh trang sẽ giữ nguyên đề cũ. Đề
-                        chưa hoàn thành sẽ được chuyển sang ngày mai.
+                        Nhấn nút <strong>"🎲 Đề Mới"</strong> khi muốn tạo bộ đề
+                        mới. Refresh trang sẽ giữ nguyên đề hiện tại.
                     </div>
 
                     <div className="system-info">
