@@ -445,7 +445,7 @@ export const generateDailyExams = async (
     }
 };
 
-// Kiểm tra và reset nếu là ngày mới
+// Kiểm tra và reset nếu là ngày mới - CHỈ THÔNG BÁO, KHÔNG TỰ ĐỘNG SINH
 export const checkAndResetIfNewDay = async (
     userId: string = "default"
 ): Promise<RandomExamResponse | null> => {
@@ -453,8 +453,18 @@ export const checkAndResetIfNewDay = async (
     if (!userData) return null;
 
     if (isNewDay(userData.currentDate || "")) {
-        console.log("🌅 New day detected, generating new daily exams...");
-        return await generateDailyExams(userId);
+        console.log(
+            "🌅 New day detected - Sẵn sàng sinh đề mới (cần gọi generateDailyExams)"
+        );
+        // CHỈ THÔNG BÁO - KHÔNG tự động sinh đề
+        return {
+            success: false,
+            dailyExams: [],
+            totalDuration: 0,
+            message: "New day detected - ready for new generation",
+        };
     }
+
+    console.log("📅 Vẫn còn cùng ngày - sử dụng đề hiện tại");
     return null;
 };

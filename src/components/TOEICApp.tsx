@@ -32,12 +32,13 @@ const TOEICApp: React.FC = () => {
         initializeApp();
     }, []);
 
-    // Auto-refresh mỗi phút để kiểm tra ngày mới
+    // Auto-refresh mỗi phút để kiểm tra ngày mới - CHỈ VÀO 0H
     useEffect(() => {
         const interval = setInterval(async () => {
             const now = new Date();
-            // Kiểm tra xem có phải 0h không
+            // Kiểm tra xem có phải 0h00 không (chính xác)
             if (now.getHours() === 0 && now.getMinutes() === 0) {
+                console.log("🌅 0h00 detected - Sinh đề mới cho ngày mới!");
                 await handleNewDayReset();
             }
             setLastUpdateTime(now);
@@ -49,19 +50,36 @@ const TOEICApp: React.FC = () => {
     const initializeApp = async () => {
         setIsLoading(true);
         try {
-            // Kiểm tra và reset nếu là ngày mới
-            const resetResult = await checkAndResetIfNewDay("default");
+            // Lấy dữ liệu user hiện tại
+            const userData = await getUserData("default");
 
-            if (resetResult && resetResult.success) {
-                setDailyExams(resetResult.dailyExams);
+            if (
+                !userData ||
+                !userData.dailyExams ||
+                userData.dailyExams.length === 0
+            ) {
+                // Chỉ sinh đề mới nếu chưa có đề hoặc lần đầu chạy
+                console.log("🆕 Không có đề hoặc lần đầu chạy - sinh đề mới");
+                const result = await generateDailyExams("default");
+                if (result.success) {
+                    setDailyExams(result.dailyExams);
+                }
             } else {
-                // Lấy dữ liệu hiện tại
+                // Đã có đề - chỉ kiểm tra ngày mới mà KHÔNG tự động sinh
+                const currentDate = getVietnamDate();
+                if (userData.currentDate !== currentDate) {
+                    console.log("🌅 Phát hiện ngày mới - cần reset (chờ 0h)");
+                    // Chỉ thông báo, KHÔNG tự động sinh đề
+                } else {
+                    console.log("📋 Sử dụng đề hiện tại của hôm nay");
+                }
+
+                // Lấy đề hiện tại
                 const todayExams = await getTodayExams("default");
                 setDailyExams(todayExams);
             }
 
             // Lấy thống kê
-            const userData = await getUserData("default");
             if (userData) {
                 setExamStats(userData.examStats);
             }
@@ -155,6 +173,21 @@ const TOEICApp: React.FC = () => {
                 </div>
 
                 <div className="header-actions">
+                    {/* Test button - xóa khi deploy thật */}
+                    <button
+                        className="test-btn"
+                        onClick={handleNewDayReset}
+                        disabled={isGenerating}
+                        title="Test sinh đề mới"
+                        style={{
+                            backgroundColor: "#ff6b6b",
+                            color: "white",
+                            fontSize: "0.8em",
+                        }}
+                    >
+                        📝 Test Đề Mới
+                    </button>
+
                     {isInstallable && (
                         <button
                             className="install-btn"
@@ -170,7 +203,7 @@ const TOEICApp: React.FC = () => {
                         onClick={() => setShowHistory(!showHistory)}
                         title="Xem lịch sử luyện tập"
                     >
-                        📊 Lịch sử
+                        📄 Lịch sử
                     </button>
                 </div>
             </header>
@@ -210,8 +243,9 @@ const TOEICApp: React.FC = () => {
                 <div className="footer-content">
                     <div className="tips">
                         💡 <strong>Tips:</strong>
-                        Hệ thống tự động random đề mới vào 0h hàng ngày. Đề chưa
-                        hoàn thành sẽ được chuyển sang ngày mai.
+                        Hệ thống chỉ tự động sinh đề mới vào đúng 0h00 hàng ngày
+                        (giờ Việt Nam). F5/refresh trang sẽ giữ nguyên đề cũ. Đề
+                        chưa hoàn thành sẽ được chuyển sang ngày mai.
                     </div>
 
                     <div className="system-info">

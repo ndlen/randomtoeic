@@ -26,3 +26,10 @@ Part 7 01
 Part 7 02
 Part 7 03
 Part 7 04
+Part 1 tốn khoảng 6 phút mỗi bài
+Part 2 tốn khoảng 14 phút mỗi bài
+Part 3 tốn khoảng 25 phút mỗi bài
+Part 4 tốn khoảng 25 phút mỗi bài
+Part 5 tốn khoảng 15 phút
+part 6 khoảng 10 phút
+Part 7 khoảng 30 phút
