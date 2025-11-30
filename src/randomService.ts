@@ -8,8 +8,8 @@ import type {
 } from "./types";
 import {
     getUserData,
-    resetDailyData,
     updateRecentHistory,
+    updateUserData,
 } from "./firebaseService";
 
 // Utility: Lấy ngày hiện tại theo múi giờ Việt Nam
@@ -160,17 +160,24 @@ export const generateDailyExams = async (
         let selectedExams: ExamItem[] = [];
 
         // 1. Xử lý carry-over từ ngày trước
+        let carryOverDuration = 0;
         if (userData.carryOverExams.length > 0) {
             const carryOverItems = userData.carryOverExams
                 .map((examId) => EXAM_DATA.find((exam) => exam.id === examId))
                 .filter((exam) => exam !== undefined) as ExamItem[];
 
             selectedExams.push(...carryOverItems);
-            const carryOverDuration = carryOverItems.reduce(
+            carryOverDuration = carryOverItems.reduce(
                 (sum, exam) => sum + exam.duration,
                 0
             );
             targetMinutes -= carryOverDuration;
+
+            console.log("🔄 Carry-over exams:", {
+                count: carryOverItems.length,
+                duration: carryOverDuration,
+                exams: carryOverItems.map((e) => e.id),
+            });
         }
 
         // 2. Lấy danh sách đề có thể random
@@ -197,57 +204,169 @@ export const generateDailyExams = async (
             (exam) => exam.type === "Reading"
         );
 
-        // 4. Tính toán thời gian target cho từng loại
-        const targetListeningMinutes = Math.round(
-            targetMinutes * DEFAULT_CONFIG.listeningRatio
-        );
-        const targetReadingMinutes = targetMinutes - targetListeningMinutes;
+        // 4. Tính toán thời gian target với giới hạn chặt (170-190 phút TỔNG)
+        const minTargetMinutes = 170;
+        const maxTargetMinutes = 190;
 
-        // 5. Random Listening exams
+        // Tính actual max cho new exams (trừ đi carry-over)
+        const actualMaxForNewExams = maxTargetMinutes - carryOverDuration;
+
+        const targetListeningMinutes = Math.round(targetMinutes * 0.67); // 67%
+        const targetReadingMinutes = targetMinutes - targetListeningMinutes; // 33%
+
+        console.log("🎯 Target distribution:", {
+            totalMinutes: `${minTargetMinutes}-${maxTargetMinutes}`,
+            carryOverDuration: `${carryOverDuration} phút`,
+            maxForNewExams: `${actualMaxForNewExams} phút`,
+            targetTotal: targetMinutes,
+            listening: `${targetListeningMinutes} phút`,
+            reading: `${targetReadingMinutes} phút`,
+            ratio: "2:1",
+        });
+
+        // 5. Random Listening exams (ưu tiên không vượt 190 phút tổng)
         let currentListeningMinutes = 0;
-        while (
-            currentListeningMinutes < targetListeningMinutes &&
-            listeningExams.length > 0
-        ) {
-            const weights = listeningExams.map((exam) =>
+        const availableListening = [...listeningExams]; // Copy để không modify original
+
+        while (availableListening.length > 0) {
+            // Kiểm tra có thể thêm đề listening ngắn nhất không
+            const shortestExam = availableListening.reduce((shortest, exam) =>
+                exam.duration < shortest.duration ? exam : shortest
+            );
+
+            const currentTotal = selectedExams.reduce(
+                (sum, exam) => sum + exam.duration,
+                0
+            );
+            const totalAfterAddingShort = currentTotal + shortestExam.duration;
+
+            // Nếu thêm đề ngắn nhất cũng vượt limit thì dừng
+            if (totalAfterAddingShort > maxTargetMinutes) {
+                console.log(
+                    `🛑 Stopping listening selection - even shortest exam (${shortestExam.duration}min) would exceed ${maxTargetMinutes}min limit`
+                );
+                break;
+            }
+
+            // Nếu đã đủ target listening minutes thì dừng
+            if (currentListeningMinutes >= targetListeningMinutes) {
+                console.log(
+                    `✅ Listening target reached: ${currentListeningMinutes}/${targetListeningMinutes} minutes`
+                );
+                break;
+            }
+
+            const weights = availableListening.map((exam) =>
                 calculateWeight(exam.id, userData.examStats)
             );
-            const selectedExam = weightedRandom(listeningExams, weights);
+            const selectedExam = weightedRandom(availableListening, weights);
 
             if (!selectedExam) break;
+
+            // Kiểm tra không vượt quá giới hạn (tổng <= 190 phút)
+            const totalAfterAdding = currentTotal + selectedExam.duration;
+
+            if (totalAfterAdding > maxTargetMinutes) {
+                console.log(
+                    `⚠️ Skipping ${selectedExam.id} - total would be ${totalAfterAdding}/${maxTargetMinutes} minutes`
+                );
+                // Loại bỏ đề này và thử đề khác
+                const index = availableListening.findIndex(
+                    (exam) => exam.id === selectedExam.id
+                );
+                availableListening.splice(index, 1);
+                continue;
+            }
 
             selectedExams.push(selectedExam);
             currentListeningMinutes += selectedExam.duration;
 
             // Loại bỏ đề đã chọn
-            const index = listeningExams.findIndex(
+            const index = availableListening.findIndex(
                 (exam) => exam.id === selectedExam.id
             );
-            listeningExams.splice(index, 1);
+            availableListening.splice(index, 1);
         }
 
-        // 6. Random Reading exams
+        // 6. Random Reading exams (ưu tiên không vượt 190 phút tổng)
         let currentReadingMinutes = 0;
-        while (
-            currentReadingMinutes < targetReadingMinutes &&
-            readingExams.length > 0
-        ) {
-            const weights = readingExams.map((exam) =>
+        const availableReading = [...readingExams]; // Copy để không modify original
+
+        while (availableReading.length > 0) {
+            // Kiểm tra có thể thêm đề reading ngắn nhất không
+            const shortestExam = availableReading.reduce((shortest, exam) =>
+                exam.duration < shortest.duration ? exam : shortest
+            );
+
+            const currentTotal = selectedExams.reduce(
+                (sum, exam) => sum + exam.duration,
+                0
+            );
+            const totalAfterAddingShort = currentTotal + shortestExam.duration;
+
+            // Nếu thêm đề ngắn nhất cũng vượt limit thì dừng
+            if (totalAfterAddingShort > maxTargetMinutes) {
+                console.log(
+                    `🛑 Stopping reading selection - even shortest exam (${shortestExam.duration}min) would exceed ${maxTargetMinutes}min limit`
+                );
+                break;
+            }
+
+            // Nếu đã đủ target reading minutes thì dừng
+            if (currentReadingMinutes >= targetReadingMinutes) {
+                console.log(
+                    `✅ Reading target reached: ${currentReadingMinutes}/${targetReadingMinutes} minutes`
+                );
+                break;
+            }
+
+            const weights = availableReading.map((exam) =>
                 calculateWeight(exam.id, userData.examStats)
             );
-            const selectedExam = weightedRandom(readingExams, weights);
+            const selectedExam = weightedRandom(availableReading, weights);
 
             if (!selectedExam) break;
+
+            // Kiểm tra không vượt quá giới hạn (tổng <= 190 phút)
+            const totalAfterAdding = currentTotal + selectedExam.duration;
+
+            if (totalAfterAdding > maxTargetMinutes) {
+                console.log(
+                    `⚠️ Skipping ${selectedExam.id} - total would be ${totalAfterAdding}/${maxTargetMinutes} minutes`
+                );
+                // Loại bỏ đề này và thử đề khác
+                const index = availableReading.findIndex(
+                    (exam) => exam.id === selectedExam.id
+                );
+                availableReading.splice(index, 1);
+                continue;
+            }
 
             selectedExams.push(selectedExam);
             currentReadingMinutes += selectedExam.duration;
 
             // Loại bỏ đề đã chọn
-            const index = readingExams.findIndex(
+            const index = availableReading.findIndex(
                 (exam) => exam.id === selectedExam.id
             );
-            readingExams.splice(index, 1);
+            availableReading.splice(index, 1);
         }
+
+        const currentTotalDuration = selectedExams.reduce(
+            (sum, exam) => sum + exam.duration,
+            0
+        );
+        console.log("📊 Selected exams:", {
+            listening: `${currentListeningMinutes} phút`,
+            reading: `${currentReadingMinutes} phút`,
+            total: `${currentTotalDuration} phút`,
+            targetRange: `${minTargetMinutes}-${maxTargetMinutes} phút`,
+            withinRange:
+                currentTotalDuration >= minTargetMinutes &&
+                currentTotalDuration <= maxTargetMinutes
+                    ? "✅"
+                    : "❌",
+        });
 
         // 7. Đảm bảo đủ 7 parts và loại bỏ duplicate
         selectedExams = ensureAllParts(selectedExams);
@@ -265,21 +384,65 @@ export const generateDailyExams = async (
 
         selectedExams = uniqueExams;
 
-        // 8. Tạo danh sách DailyExamStatus
+        // 8. Sort theo thứ tự Part để dễ ôn (Part 1→2→3→4→5→6→7)
+        const partOrder: TOEICPart[] = [
+            "Part 1",
+            "Part 2",
+            "Part 3",
+            "Part 4",
+            "Part 5",
+            "Part 6",
+            "Part 7",
+        ];
+
+        selectedExams.sort((a, b) => {
+            const aIndex = partOrder.indexOf(a.part);
+            const bIndex = partOrder.indexOf(b.part);
+
+            if (aIndex !== bIndex) {
+                return aIndex - bIndex; // Sort by part order
+            }
+
+            // Nếu cùng part, sort theo exam number
+            return a.examNumber - b.examNumber;
+        });
+
+        console.log(
+            "📋 Final sorted exams:",
+            selectedExams.map(
+                (e) => `${e.part} ${e.examNumber.toString().padStart(2, "0")}`
+            )
+        );
+
+        // 9. Tạo danh sách DailyExamStatus
         const dailyExams: DailyExamStatus[] = selectedExams.map((exam) => ({
             examId: exam.id,
             isCompleted: false,
             assignedDate: today,
         }));
 
-        // 9. Cập nhật database
+        // 10. Cập nhật database
         const totalDuration = selectedExams.reduce(
             (sum, exam) => sum + exam.duration,
             0
         );
         const examIds = selectedExams.map((exam) => exam.id);
 
-        await resetDailyData(dailyExams, userId);
+        // Cập nhật dữ liệu user với daily exams mới
+        const currentDate = getVietnamDate();
+
+        // Lưu carry-over từ ngày trước
+        const uncompletedExams = userData.dailyExams
+            ? userData.dailyExams
+                  .filter((exam) => !exam.isCompleted)
+                  .map((exam) => exam.examId)
+            : [];
+
+        userData.currentDate = currentDate;
+        userData.dailyExams = dailyExams;
+        userData.carryOverExams = uncompletedExams;
+
+        await updateUserData(userData);
         await updateRecentHistory(examIds, userId);
 
         return {

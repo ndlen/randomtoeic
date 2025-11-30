@@ -112,12 +112,6 @@ const TOEICApp: React.FC = () => {
         }, 500); // Delay nhỏ để đảm bảo Firebase đã cập nhật
     };
 
-    const handleManualReset = async () => {
-        if (window.confirm("Bạn có chắc muốn random lại đề cho hôm nay?")) {
-            await handleNewDayReset();
-        }
-    };
-
     const formatTime = (date: Date) => {
         return date.toLocaleTimeString("vi-VN", {
             hour: "2-digit",
@@ -177,15 +171,6 @@ const TOEICApp: React.FC = () => {
                         title="Xem lịch sử luyện tập"
                     >
                         📊 Lịch sử
-                    </button>
-
-                    <button
-                        className="refresh-btn"
-                        onClick={handleManualReset}
-                        disabled={isGenerating || isLoading}
-                        title="Random lại đề hôm nay"
-                    >
-                        {isGenerating ? "⏳" : "🔄"} Reset
                     </button>
                 </div>
             </header>

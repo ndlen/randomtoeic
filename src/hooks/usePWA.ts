@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 
+// Interface for beforeinstallprompt event
+interface BeforeInstallPromptEvent extends Event {
+    prompt(): Promise<void>;
+    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 // Service Worker registration và update handling
 export const useServiceWorkerUpdate = () => {
     const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -7,6 +13,14 @@ export const useServiceWorkerUpdate = () => {
         useState<ServiceWorkerRegistration | null>(null);
 
     useEffect(() => {
+        // Không hiển thị update trong development mode
+        if (import.meta.env.DEV) {
+            console.log(
+                "🚧 Development mode - skipping service worker updates"
+            );
+            return;
+        }
+
         // Kiểm tra service worker support
         if ("serviceWorker" in navigator) {
             // Listen for controlling service worker changes
@@ -57,7 +71,8 @@ export const useServiceWorkerUpdate = () => {
 
 // PWA Install prompt hook
 export const usePWAInstall = () => {
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [deferredPrompt, setDeferredPrompt] =
+        useState<BeforeInstallPromptEvent | null>(null);
     const [isInstallable, setIsInstallable] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
 
@@ -71,7 +86,9 @@ export const usePWAInstall = () => {
             }
 
             // Check iOS standalone
-            const nav = navigator as any;
+            const nav = navigator as typeof navigator & {
+                standalone?: boolean;
+            };
             if (nav.standalone === true) {
                 setIsInstalled(true);
                 return true;
@@ -83,8 +100,9 @@ export const usePWAInstall = () => {
         if (checkInstalled()) return;
 
         const handleBeforeInstallPrompt = (e: Event) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
+            const installEvent = e as BeforeInstallPromptEvent;
+            installEvent.preventDefault();
+            setDeferredPrompt(installEvent);
             setIsInstallable(true);
             console.log("💡 PWA installable");
         };

@@ -142,43 +142,50 @@ export const toggleExamCompleted = async (
             const wasCompleted = userData.dailyExams[examIndex].isCompleted;
             userData.dailyExams[examIndex].isCompleted = !wasCompleted;
 
-            // Chỉ cập nhật stats khi mark completed (không giảm khi uncheck)
-            if (!wasCompleted) {
-                // Đảm bảo examStats tồn tại
-                if (!userData.examStats) {
-                    userData.examStats = [];
-                }
+            // Đảm bảo examStats tồn tại
+            if (!userData.examStats) {
+                userData.examStats = [];
+            }
 
-                // Cập nhật stats trực tiếp trong userData
-                const today = new Date().toLocaleDateString("en-CA");
-                const existingStatIndex = userData.examStats.findIndex(
-                    (stat) => stat.examId === examId
-                );
+            // Cập nhật stats: tăng khi tick, giảm khi hủy
+            const today = new Date().toLocaleDateString("en-CA");
+            const existingStatIndex = userData.examStats.findIndex(
+                (stat) => stat.examId === examId
+            );
 
-                if (existingStatIndex >= 0) {
-                    // Cập nhật stats hiện có
+            if (existingStatIndex >= 0) {
+                // Cập nhật stats hiện có
+                if (!wasCompleted) {
+                    // Tăng count khi tick
                     userData.examStats[existingStatIndex].completedCount += 1;
                     userData.examStats[existingStatIndex].lastCompletedDate =
                         today;
                 } else {
-                    // Thêm stats mới
-                    userData.examStats.push({
-                        examId,
-                        completedCount: 1,
-                        lastCompletedDate: today,
-                    });
+                    // Giảm count khi hủy (không cho phép âm)
+                    userData.examStats[existingStatIndex].completedCount =
+                        Math.max(
+                            0,
+                            userData.examStats[existingStatIndex]
+                                .completedCount - 1
+                        );
                 }
+            } else if (!wasCompleted) {
+                // Thêm stats mới chỉ khi tick (không phải hủy)
+                userData.examStats.push({
+                    examId,
+                    completedCount: 1,
+                    lastCompletedDate: today,
+                });
+            }
 
-                // Cập nhật recent history ngay lập tức
-                if (!userData.recentHistory.includes(examId)) {
-                    userData.recentHistory = [
-                        examId,
-                        ...userData.recentHistory,
-                    ].slice(0, 15);
-                }
+            // Cập nhật recent history chỉ khi tick
+            if (!wasCompleted && !userData.recentHistory.includes(examId)) {
+                userData.recentHistory = [
+                    examId,
+                    ...userData.recentHistory,
+                ].slice(0, 15);
             }
         }
-
         return await updateUserData(userData, userId);
     } catch (error) {
         console.error("Error toggling exam completed:", error);
@@ -244,38 +251,6 @@ export const updateRecentHistory = async (
         return await updateUserData(userData, userId);
     } catch (error) {
         console.error("Error updating recent history:", error);
-        return false;
-    }
-};
-
-// Reset ngày mới
-export const resetDailyData = async (
-    newDailyExams: DailyExamStatus[],
-    userId: string = DEFAULT_USER_ID
-): Promise<boolean> => {
-    try {
-        const userData = await getUserData(userId);
-        if (!userData) return false;
-
-        const today = new Date().toLocaleDateString("en-CA");
-
-        // Đảm bảo dailyExams tồn tại
-        if (!userData.dailyExams) {
-            userData.dailyExams = [];
-        }
-
-        // Lưu carry-over từ ngày trước
-        const uncompletedExams = userData.dailyExams
-            .filter((exam) => !exam.isCompleted)
-            .map((exam) => exam.examId);
-
-        userData.currentDate = today;
-        userData.dailyExams = newDailyExams;
-        userData.carryOverExams = uncompletedExams;
-
-        return await updateUserData(userData, userId);
-    } catch (error) {
-        console.error("Error resetting daily data:", error);
         return false;
     }
 };
